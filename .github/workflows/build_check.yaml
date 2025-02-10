@@ -6,12 +6,12 @@ on:
 
 jobs:
   build_check:
-  runs-on: ubuntu-latest
-  container: wpilib/roborio-cross-ubuntu:2025-22.04
-  steps:
-    uses: actions/checkout@v4
-    run: git config --global --add safe.directory $GITHUB_WORKSPACE
-    run: chmod +x gradlew
-    - name: Build project
-      run: ./gradlew build
+    runs-on: ubuntu-latest
+    container: wpilib/roborio-cross-ubuntu:2025-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: git config --global --add safe.directory $GITHUB_WORKSPACE
+      - run: chmod +x gradlew
+      - name: Build project
+        run: ./gradlew build
 
