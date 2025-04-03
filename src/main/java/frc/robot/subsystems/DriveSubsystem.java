@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -21,11 +22,14 @@ import edu.wpi.first.util.sendable.SendableBuilder;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 import frc.robot.Constants.*;
 import frc.robot.Constants.DriveConstants.DriveType;
 import frc.robot.Constants.DriveConstants.WheelIndex;
+import com.ctre.phoenix6.sim.CANcoderSimState;
+import edu.wpi.first.units.Units;
 
 public class DriveSubsystem extends SubsystemBase {
 
@@ -66,6 +70,8 @@ public class DriveSubsystem extends SubsystemBase {
      */
     private List<CANcoder> swerveCANCODER;
 
+    private List<SwerveModuleState> swerveStates;
+
     /**
      * Our CANCoders measure absolute angles that don't change even when the
      * robot is power-cycled. However, the CANCoder's zero position is not
@@ -100,6 +106,8 @@ public class DriveSubsystem extends SubsystemBase {
     private double clampedTurn;
     private double currentYAxis;
     private double currentTurn;
+
+    private List<CANcoderSimState> simEncoders;
 
     /**
      * Intended to be owned by the RobotContainer and to be used by
@@ -204,6 +212,13 @@ public class DriveSubsystem extends SubsystemBase {
                     new PIDController(Constants.DriveConstants.PIVOT_MOTOR_P, Constants.DriveConstants.PIVOT_MOTOR_I, Constants.DriveConstants.PIVOT_MOTOR_D),
                     new PIDController(Constants.DriveConstants.PIVOT_MOTOR_P, Constants.DriveConstants.PIVOT_MOTOR_I, Constants.DriveConstants.PIVOT_MOTOR_D)
                 });
+
+                if (RobotBase.isSimulation()) {
+                    simEncoders = new ArrayList<CANcoderSimState>();
+                    for(CANcoder encoder : swerveCANCODER) {
+                        simEncoders.add(new CANcoderSimState(encoder));
+                    }
+                }
                 break;
             }
         }
@@ -267,6 +282,16 @@ public class DriveSubsystem extends SubsystemBase {
                 addMotorHelper.accept(swervePivotMotors, "FL Pivot", WheelIndex.FRONT_LEFT);
                 addMotorHelper.accept(swervePivotMotors, "BR Pivot", WheelIndex.BACK_RIGHT);
                 addMotorHelper.accept(swervePivotMotors, "BL Pivot", WheelIndex.BACK_LEFT);
+
+                builder.addStringArrayProperty("Swerve States", () -> {
+                    List<String> states = new ArrayList<String>();
+                    if (swerveStates != null) {
+                        for (SwerveModuleState state : swerveStates) {
+                            states.add(state.toString());
+                        }
+                    }
+                    return states.toArray(new String[0]);
+                }, (value) -> {});
                 break;
         }
         builder.setActuator(true);
@@ -396,13 +421,21 @@ public class DriveSubsystem extends SubsystemBase {
                                               Constants.DriveConstants.SWERVE_MODULE_POSITIONS.get(BACK_RIGHT),
                                               Constants.DriveConstants.SWERVE_MODULE_POSITIONS.get(BACK_LEFT));
 
-                SwerveModuleState[] swerveStates = kinematics.toSwerveModuleStates(movement);
+                swerveStates = Arrays.asList(kinematics.toSwerveModuleStates(movement));
 
                 double[] CANCoderAngles = new double[4];
                 for (int i = 0; i < 4; i++) {
                    var temporary = swerveCANCODER.get(i).getAbsolutePosition();
                    temporary.refresh();
                    CANCoderAngles[i] = temporary.getValueAsDouble();
+                   double angleDiff = CANCoderAngles[i] - swerveStates.get(i).angle.getDegrees();
+                   if (angleDiff > 1.0) {
+                       swervePivotMotors.get(i).set(1.0);
+                   } else if (angleDiff < -1.0) {
+                       swervePivotMotors.get(i).set(1.0);
+                   } else {
+                       swervePivotMotors.get(i).set(0.0);
+                   }
                 }
 
                 // TODO: Use the CANCoder's measurements for the PID
@@ -418,4 +451,11 @@ public class DriveSubsystem extends SubsystemBase {
         }
     }
 
+    public void simulationPeriodic() {
+        for (int i = 0; i < 4; ++i) {
+            var simEncoder = simEncoders.get(i);
+            var swervePivotMotor = swervePivotMotors.get(i);
+            simEncoder.addPosition(Units.Degrees.of(swervePivotMotor.get()));
+        }
+    }
 }

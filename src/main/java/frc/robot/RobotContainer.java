@@ -32,7 +32,7 @@ public class RobotContainer {
   // The robot's subsystems and commands are defined here...
   private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
   private final InputSubsystem m_inputSubsystem = new InputSubsystem();
-  private final DriveSubsystem m_driveSubsystem = new DriveSubsystem(m_inputSubsystem, DriveType.DIFFERENTIAL_DRIVE);
+  private final DriveSubsystem m_driveSubsystem = new DriveSubsystem(m_inputSubsystem, DriveType.SWERVE_DRIVE);
   private final ArmSubsystem m_armSubsystem = new ArmSubsystem(m_inputSubsystem);
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
