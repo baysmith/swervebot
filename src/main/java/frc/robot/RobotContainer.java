@@ -18,6 +18,7 @@ import frc.robot.subsystems.InputSubsystem;
 import java.lang.reflect.Method;
 
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.*;
@@ -35,7 +36,7 @@ public class RobotContainer {
   // The robot's subsystems and commands are defined here...
   private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
   private final InputSubsystem m_inputSubsystem = new InputSubsystem();
-  private final DriveType driveType = DriveType.DIFFERENTIAL_DRIVE;
+  private final DriveType driveType = DriveType.SWERVE_DRIVE;
   private final DriveSubsystem m_driveSubsystem = new DriveSubsystem(m_inputSubsystem, driveType);
   //private final ArmSubsystem m_armSubsystem = new ArmSubsystem(m_inputSubsystem);
   private final ArmSubsystem m_armSubsystem = null;
@@ -43,6 +44,36 @@ public class RobotContainer {
   // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController m_driverController = new CommandXboxController(
       OperatorConstants.kDriverControllerPort);
+
+  /**
+   * This command is what continously gathers input from inputSubsystem
+   * to drive the robot once autonomous ends.
+   */
+  private Command teleopCommand = null; 
+
+  /**
+   * Allows us to schedule when the robot needs to drive.
+   * This is expected to be called after auton and during teleopInnit
+   * or during testing.
+   */
+  public void startTeleopCommand() {
+    if (teleopCommand == null) {
+      teleopCommand = getTeleopCommand();
+    }
+    teleopCommand.schedule();
+  }
+
+  /**
+   * Allows us to stop receiving input from inputSubsystem and 
+   * stops the human controller from moving the robot.
+   * This should be called at the beginning of autonomous and beginning
+   * of the disabled phase. 
+   */
+  public void stopTeleopCommand() {
+    if (teleopCommand != null) {
+      teleopCommand.cancel();
+    }
+  }
 
   /**
    * The container for the robot. Contains subsystems, OI devices, and commands.
@@ -92,10 +123,22 @@ public class RobotContainer {
     m_driveSubsystem.resetToForwardPosition();
   }
 
-  public Command foo() {
+  public Command getTeleopCommand() {
     // We need to use getForwardBack, getLeftRight and getTurn from the Input
     // Subsystem to call DriveSubsystem.drive
-    return null;
+    Command result = new RunCommand(() -> {
+      // This runnable runs continously, and as long as it's running the 
+      // drive should respond to controller input.
+      while (true) {
+        double forwardBack = m_inputSubsystem.getForwardBack();
+        double leftRight = m_inputSubsystem.getLeftRight();
+        double turn = m_inputSubsystem.getTurn();
+        System.out.print("fb: " + forwardBack + "\n\tlr:" + leftRight + "\n\t\tturn:" + turn);
+
+        m_driveSubsystem.drive(forwardBack, leftRight, turn);
+      }
+    }, m_inputSubsystem, m_driveSubsystem);
+    return result;
   }
 
   /**

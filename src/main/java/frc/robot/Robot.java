@@ -51,6 +51,7 @@ public class Robot extends TimedRobot {
   @Override
   public void disabledInit() {
     m_robotContainer.stopAllMotors();
+    m_robotContainer.stopTeleopCommand();
   }
 
   @Override
@@ -65,7 +66,7 @@ public class Robot extends TimedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.schedule();
     }
-
+    m_robotContainer.stopTeleopCommand();
     m_robotContainer.stopAllMotors();
   }
 
@@ -83,6 +84,7 @@ public class Robot extends TimedRobot {
       m_autonomousCommand.cancel();
     }
     m_robotContainer.resetToForwardPosition();
+    m_robotContainer.startTeleopCommand();
     //m_robotContainer.stopAllMotors();
   }
 
@@ -93,7 +95,10 @@ public class Robot extends TimedRobot {
   @Override
   public void testInit() {
     // Cancels all running commands at the start of test mode.
+    // Stops all the motors but enables the teleop command to 
+    // still receive input from the inputSubsystem.
     CommandScheduler.getInstance().cancelAll();
+    m_robotContainer.startTeleopCommand();
     m_robotContainer.stopAllMotors();
   }
 
