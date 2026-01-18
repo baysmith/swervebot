@@ -35,8 +35,10 @@ public class RobotContainer {
   // The robot's subsystems and commands are defined here...
   private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
   private final InputSubsystem m_inputSubsystem = new InputSubsystem();
-  private final DriveSubsystem m_driveSubsystem = new DriveSubsystem(m_inputSubsystem, DriveType.SWERVE_DRIVE);
-  private final ArmSubsystem m_armSubsystem = new ArmSubsystem(m_inputSubsystem);
+  private final DriveType driveType = DriveType.DIFFERENTIAL_DRIVE;
+  private final DriveSubsystem m_driveSubsystem = new DriveSubsystem(m_inputSubsystem, driveType);
+  //private final ArmSubsystem m_armSubsystem = new ArmSubsystem(m_inputSubsystem);
+  private final ArmSubsystem m_armSubsystem = null;
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController m_driverController = new CommandXboxController(
@@ -103,6 +105,10 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    return Autos.coralAuto(m_driveSubsystem, m_armSubsystem, "right");
+    if (m_armSubsystem != null) {
+      return Autos.coralAuto(m_driveSubsystem, m_armSubsystem, "right");
+    } else {
+      return null;
+    }
   }
 }

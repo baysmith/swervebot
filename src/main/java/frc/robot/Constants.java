@@ -173,7 +173,7 @@ public final class Constants {
      * PID Constants for the Pivot Motors
      * TODO: Find the PID Constants for the Pivot Motors.
      */
-    public static final double PIVOT_MOTOR_P = 0.1;
+    public static final double PIVOT_MOTOR_P = 0.05;
     public static final double PIVOT_MOTOR_I = 0;
     public static final double PIVOT_MOTOR_D = 0;
 

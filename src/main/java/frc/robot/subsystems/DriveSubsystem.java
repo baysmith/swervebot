@@ -78,10 +78,10 @@ public class DriveSubsystem extends SubsystemBase {
      * (angle = zero degrees.)
      */
     private double[] CAN_CODER_ANGLE_OFFSETS = { // These values are all in degrees.
-        21.53,  // BACK_RIGHT
-        74.62,  // BACK_LEFT
-        80.07,  // FRONT_LEFT
-        111.80, // FRONT_RIGHT
+        18.37,  // BACK_RIGHT
+        70.40,  // BACK_LEFT
+        66.75,  // FRONT_LEFT
+        114.35, // FRONT_RIGHT
     };
 
     /**
@@ -89,10 +89,10 @@ public class DriveSubsystem extends SubsystemBase {
      * (FL is inverted as it was rotating opposite the direction assigned to it)
      */
     private boolean[] isMotorReversed = { 
-        false, // BACK_RIGHT
-        false, // BACK_LEFT
+        true, // BACK_RIGHT
+        true, // BACK_LEFT
         true,  // FRONT_LEFT (as of 12/14/25)
-        false, // FRONT_RIGHT
+        true, // FRONT_RIGHT
     };
 
     /**
@@ -249,9 +249,6 @@ public class DriveSubsystem extends SubsystemBase {
                     var motor = swervePivotMotors.get(i);
                     var config = new SparkMaxConfig();
                     config.apply(commonConfig);
-                    if (isMotorReversed[i] == true) {
-                        config.apply(invertedConfig);
-                    }
                     //TODO: This belongs in drive motor configuration for getting
                     //the drive speed in meters per second.
                     //config.encoder.velocityConversionFactor(getConversionFactor());
@@ -295,8 +292,10 @@ public class DriveSubsystem extends SubsystemBase {
     }
 
     public void stopAllMotors() {
-        this.swerveDriveMotors.forEach(SparkMax::stopMotor);
-        this.swervePivotMotors.forEach(SparkMax::stopMotor);
+        if (this.driveType == DriveType.SWERVE_DRIVE) {
+            this.swerveDriveMotors.forEach(SparkMax::stopMotor);
+            this.swervePivotMotors.forEach(SparkMax::stopMotor);
+        }
     }
 
     /**
@@ -444,26 +443,29 @@ public class DriveSubsystem extends SubsystemBase {
      * clockwise and -1.0 is full speed counterclockwise.
      */
     public void drive(double forwardBack, double leftRight, double turn) {
-        double clampedForwardBack = MathUtil.clamp(forwardBack, -1.0, 1.0);
-        double clampedLeftRight = MathUtil.clamp(leftRight, -1.0, 1.0); // 
-        double clampedTurn = MathUtil.clamp(turn, -1.0, 1.0);
+        clampedForwardBack = MathUtil.clamp(forwardBack, -1.0, 1.0);
+        clampedLeftRight = MathUtil.clamp(leftRight, -1.0, 1.0); // 
+        clampedTurn = MathUtil.clamp(turn, -1.0, 1.0);
 
-        // Convert the human input into a ChassisSpeeds object giving us
-        // the overall bearing of the chassis. The parameters for the ChassisSpeeds are velocities.
-        //
-        // We will always be driving using values from the drive().        
-       
-        ChassisSpeeds movement =
-            new ChassisSpeeds(Constants.DriveConstants.SWERVE_DRIVE_MAX_DRIVING_SPEED_METERS_PER_SECOND * clampedForwardBack,
-                              Constants.DriveConstants.SWERVE_DRIVE_MAX_DRIVING_SPEED_METERS_PER_SECOND * clampedLeftRight,
-                              Constants.DriveConstants.SWERVE_DRIVE_MAX_TURNING_SPEED_RADIANS_PER_SECOND * clampedTurn);
+        if (driveType == DriveType.SWERVE_DRIVE) {
+                
+            // Convert the human input into a ChassisSpeeds object giving us
+            // the overall bearing of the chassis. The parameters for the ChassisSpeeds are velocities.
+            //
+            // We will always be driving using values from the drive().        
+        
+            ChassisSpeeds movement =
+                new ChassisSpeeds(Constants.DriveConstants.SWERVE_DRIVE_MAX_DRIVING_SPEED_METERS_PER_SECOND * clampedForwardBack,
+                                Constants.DriveConstants.SWERVE_DRIVE_MAX_DRIVING_SPEED_METERS_PER_SECOND * clampedLeftRight,
+                                Constants.DriveConstants.SWERVE_DRIVE_MAX_TURNING_SPEED_RADIANS_PER_SECOND * clampedTurn);
 
-        // With inverse kinematics, convert the overall chassis speed
-        // into the speeds and angles for all four swerve modules.
-        //
-        // The .toSwerveModuleStates function is what does inverse kinematics to get 
-        // the speed and angle of the individual modules.
-        goalStates = Arrays.asList(kinematics.toSwerveModuleStates(movement));
+            // With inverse kinematics, convert the overall chassis speed
+            // into the speeds and angles for all four swerve modules.
+            //
+            // The .toSwerveModuleStates function is what does inverse kinematics to get 
+            // the speed and angle of the individual modules.
+            goalStates = Arrays.asList(kinematics.toSwerveModuleStates(movement));
+        }
     }
 
     /**
@@ -507,7 +509,7 @@ public class DriveSubsystem extends SubsystemBase {
                         Math.abs(clampedTurn) < Constants.MathConstants.EPSILON) {
                         differentialDrive.arcadeDrive(0.0, 0.0);
                         followDifferentialDrive.arcadeDrive(0.0, 0.0);
-                        //System.out.println("stopped.");
+                        // System.out.println("stopped.");
                     } else {
                         // Limit the amount that the yAxis and turn values are changed
                         // by calculating the difference between the target value, clampedYAxis
@@ -581,6 +583,8 @@ public class DriveSubsystem extends SubsystemBase {
                         double power = pivotMotorPIDController.calculate(CANCoderAnglesRadians[i],
                                                                          goalState.angle.getRadians());
 
+                        if (isMotorReversed[i])
+                            power *= -1.0;
                         // Set the output to the pivot motor.
                         //if(i == 0) {
                         pivotMotor.set(power);
@@ -594,7 +598,22 @@ public class DriveSubsystem extends SubsystemBase {
                             var error = setpoint - CANCoderAnglesRadians[i];
                             SmartDashboard.putNumber(labels[i], error);
                         }
+                        String[] labels = new String[] {
+                            "BR power",
+                            "BL power",
+                            "FL power",
+                            "FR power",
+                        };
+                        SmartDashboard.putNumber(labels[i], power);
+                        String[] labels2 = new String[] {
+                            "BR goal angle",
+                            "BL goal angle",
+                            "FL goal angle",
+                            "FR goal angle",
+                        };
+                        SmartDashboard.putNumber(labels2[i], goalState.angle.getDegrees());
                     }
+
 
                     // We are powering the drive motor without PID because we do
                     // not care when the drive motor reaches a specific velocity
