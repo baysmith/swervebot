@@ -350,6 +350,7 @@ public class DriveSubsystem extends SubsystemBase {
     public void initSendable(SendableBuilder builder) {
         super.initSendable(builder);
         System.out.printf("initalizing shuffleboard");
+        //Line 355 is defining a lambda function
         TriConsumer<List<SparkMax>, String, WheelIndex> addMotorHelper = (motors, name, index) -> {
             builder.addDoubleProperty(name,
                                       () -> motors.get(index.label).get(),
@@ -397,6 +398,13 @@ public class DriveSubsystem extends SubsystemBase {
                 addCANcoderHelper.accept(swerveCANCODER, "BL Angle", WheelIndex.BACK_LEFT);
                 addCANcoderHelper.accept(swerveCANCODER, "FL Angle", WheelIndex.FRONT_LEFT);
                 addCANcoderHelper.accept(swerveCANCODER, "FR Angle", WheelIndex.FRONT_RIGHT);
+                
+                // Added our goal angles here
+                builder.addDoubleProperty("BR Goal Angle", () -> goalStates.get(WheelIndex.BACK_RIGHT.label).angle.getDegrees(), null);
+                builder.addDoubleProperty("BL Goal Angle", () -> goalStates.get(WheelIndex.BACK_LEFT.label).angle.getDegrees(), null);
+                builder.addDoubleProperty("FL Goal Angle", () -> goalStates.get(WheelIndex.FRONT_LEFT.label).angle.getDegrees(), null);
+                builder.addDoubleProperty("FR Goal Angle", () -> goalStates.get(WheelIndex.FRONT_RIGHT.label).angle.getDegrees(), null);
+
                 break;
         }
         builder.setActuator(true);
